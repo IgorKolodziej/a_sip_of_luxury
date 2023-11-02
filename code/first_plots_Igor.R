@@ -149,21 +149,13 @@ ggsave("./plots/top_10_owners.png")
 library(ggplot2)
 library(maps)
 
-# Get world map data
 world_map <- map_data("world")
 
-# Your data frame (replace this with your actual data)
-#df <- data.frame(country = c("France", "Germany", "China"),
-                 #value = c(10, 20, 30))
-colnames(df)
-
-# Merge your data with the world map data
 merged_data <- merge(world_map, df, by.x = "region", by.y = "Country.of.Origin", all.x = TRUE)
 country_centroids <- aggregate(cbind(long, lat) ~ region, data = world_map, FUN=function(x) mean(range(x)))
-# Replace NA values with a specific value (e.g., 0)
+
 merged_data$Number.of.Bags[is.na(merged_data$value)] <- 0
 merged_data$altitude_mean_meters[is.na(merged_data$altitude_mean_meters)] <- 0
-# Create the map
 
 merged_data %>%
   mutate("Number.of.Bags" = as.numeric(`Number.of.Bags`),
@@ -178,7 +170,7 @@ ggplot() +
   scale_fill_gradient(low = "white", high = "brown") +
 
 
-    geom_text(data = world_map, aes(x = long, y = lat, label = region)) +
+    # geom_text(data = world_map, aes(x = long, y = lat, label = region)) +
     theme_void() +
     theme(legend.position = "bottom") +
     labs(title = "Average altitude by country")
