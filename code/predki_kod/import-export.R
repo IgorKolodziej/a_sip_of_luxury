@@ -1,57 +1,80 @@
-library(dplyr)
-library(tidyr)
 library(ggplot2)
+library(dplyr)
+library(scales)
+library(maps)
 
-source("./projekty/coffee/code/predki_kod/load.r")
+exports_calendar_year <- read.csv("./projekty/coffee/data/ICO_Coffee_Dataset/exports-calendar-year.csv")
+imports <- read.csv("./projekty/coffee/data/ICO_Coffee_Dataset/imports.csv")
 
-biggest_production_countries <- total_production %>%
+world_map <- map_data("world")
+
+exporters <- exports_calendar_year %>%
   rowwise() %>%
-  mutate(mean_value = mean(c_across(X2010:X2018), na.rm = TRUE)) %>%
-  arrange(desc(mean_value)) %>%
-  select(total_production) %>%
-  rename(country_name = total_production) %>%
-  head(5)
+  mutate(
+    value = mean(c_across(X2010:X2018), na.rm = TRUE),
+    exports = trimws(exports)
+  ) %>%
+  arrange(desc(value)) %>%
+  select(exports, value) %>%
+  rename(country = exports) %>%
+  mutate(type = "exporter")
 
-top5_production <- total_production %>%
-  filter(total_production %in% biggest_production_countries$country_name) %>%
-  select(total_production, X2010:X2018) %>%
-  rename(country_name = total_production) %>%
-  pivot_longer(cols = X2010:X2018, names_to = "year", values_to = "value")
+value_max <- max(exporters$value)
+value_min <- min(exporters$value)
+exporters <- exporters %>%
+  mutate(normalized_value = (value - value_min) / (value_max - value_min))
 
-top5_export <- exports_calendar_year %>%
-  filter(exports %in% biggest_production_countries$country_name) %>%
-  select(exports, X2010:X2018) %>%
-  rename(country_name = exports) %>%
-  pivot_longer(cols = X2010:X2018, names_to = "year", values_to = "value")
+importers <- imports %>%
+  rowwise() %>%
+  mutate(
+    value = mean(c_across(X2010:X2018), na.rm = TRUE),
+    imports = trimws(imports)
+  ) %>%
+  arrange(desc(value)) %>%
+  select(imports, value) %>%
+  rename(country = imports) %>%
+  mutate(type = "importer")
 
-top5_domestic_consumption <- domestic_consumption %>%
-  filter(domestic_consumption %in% biggest_production_countries$country_name) %>%
-  select(domestic_consumption, X2010:X2018) %>%
-  rename(country_name = domestic_consumption) %>%
-  pivot_longer(cols = X2010:X2018, names_to = "year", values_to = "value")
+value_max <- max(importers$value, na.rm = TRUE)
+value_min <- min(importers$value, na.rm = TRUE)
+importers <- importers %>%
+  mutate(normalized_value = (value - value_min) / (value_max - value_min))
 
-top5_merged <- merge(top5_production, top5_export, by = c("country_name", "year")) %>%
-  rename(production = value.x, export = value.y)
 
-top5_merged <- merge(top5_merged, top5_domestic_consumption, by = c("country_name", "year")) %>%
-  rename(domestic_consumption = value)
+world_map_exporters <- world_map %>%
+  left_join(exporters, by = c("region" = "country"))
 
-top5_merged <- top5_merged %>%
-  mutate(production = production,
-         export = export / production * 100,
-         domestic_consumption = domestic_consumption / production * 100)
+world_map_importers <- world_map %>%
+  left_join(importers, by = c("region" = "country"))
 
-ggplot(top5_merged, aes(x = year, color = country_name, group = country_name)) +
-  geom_line(aes(y = export, linetype = "Export"), size = 1) +
-  geom_point(aes(y = export), size = 2) +
-  geom_area(aes(y = export, fill = country_name), alpha = 0.2, show.legend = FALSE) +
+min_import_value <- min(importers$value)
+max_import_value <- max(importers$value)
 
-  geom_line(aes(y = domestic_consumption, linetype = "Domestic Consumption"), size = 1, alpha = 0.6) +
-  geom_point(aes(y = domestic_consumption), size = 2, alpha = 0.5) +
-  geom_area(aes(y = domestic_consumption, fill = country_name), alpha = .5, show.legend = FALSE) +
+imp <- ggplot(data = world_map_importers) +
+  geom_polygon(aes(x = long, y = lat, group = group, fill = normalized_value), color = "transparent") +
+  scale_fill_gradient(low = "lightblue", high = "darkblue", na.value = "#f2ead7", limits = c(0, 1)) +
+  coord_fixed(1.1) +
+  labs(fill = "Import Value") +
+  theme_void() +
+  theme(
+    plot.background = element_rect(fill = "transparent", colour = NA),
+    panel.background = element_rect(fill = "transparent", colour = NA),
+    legend.position = "left"
+  )
 
-  labs(title = "Export and Domestic Consumption Percentages Over Years",
-       y = "Percentage", x = "Year", color = "Country", linetype = "Metric") +
-  scale_x_discrete(breaks = unique(top5_merged$year)) +
-  facet_wrap(~country_name, ncol = 1, scales = "free_y") +
-  theme_minimal()
+
+exp <- ggplot(data = world_map_exporters) +
+  geom_polygon(aes(x = long, y = lat, group = group, fill = normalized_value), color = "transparent") +
+  scale_fill_gradient(low = "pink", high = "darkred", na.value = "#f2ead7", limits = c(0, 1)) +
+  coord_fixed(1.1) +
+  labs(fill = "Export Value") +
+  theme_void() +
+  theme(
+    plot.background = element_rect(fill = "transparent", colour = NA),
+    panel.background = element_rect(fill = "transparent", colour = NA),
+    legend.position = "left"
+  )
+
+
+ggsave("./projekty/coffee/plots/predkie_ploty/world_map_importers.png", plot = imp, width = 20, height = 15, units = "in", dpi = 300, bg = "transparent")
+ggsave("./projekty/coffee/plots/predkie_ploty/world_map_exporters.png", plot = exp, width = 20, height = 15, units = "in", dpi = 300, bg = "transparent")
