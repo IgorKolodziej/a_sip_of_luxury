@@ -39,9 +39,20 @@ palette2 <- c("#CD7F32", "#A67B5B", "#836953", "#966919", "#704214")
 palette3 <- c("#3e1e04", "#6a3005", "#965015", "#c4923e", "#cbac85")
 palette4 <- brewer.pal(n = 5, name = "YlOrBr")
 
+library(png)
+
+# Read the image file (replace 'path_to_image.png' with your image's path)
+img <- readPNG("./code/mask2.png")
+
+# Convert the image to a matrix
+mask <- matrix(apply(img, c(1, 2), function(x) mean(x)), nrow = dim(img)[1])
+
+# Create the word cloud with your data and the custom shape mask
+wordcloud2(words_df, figPath = mask)
+
 # WORD CLOUD
-wordcloud2(words_df, size = 1.5, color = palette1, backgroundColor = "white", shape = "circle", minRotation = -pi/4, maxRotation = pi/4, rotateRatio = 0.5)
-wordcloud2(words_df, size = 1.5, color = palette2, backgroundColor = "white", shape = "circle", minRotation = -pi/4, maxRotation = pi/4, rotateRatio = 0.5)
+wordcloud2(words_df, figPath = "./code/mask2.png", backgroundColor = "black") #minRotation = -pi/4, maxRotation = pi/4, rotateRatio = 0.5
+wordcloud2(words_df, color = palette2, backgroundColor = "white", shape = "cardioid", minRotation = -pi/4, maxRotation = pi/4, rotateRatio = 0.5)
 wordcloud2(words_df, size = 1.5, color = palette3, backgroundColor = "white", shape = "circle", minRotation = -pi/4, maxRotation = pi/4, rotateRatio = 0.5)
 wordcloud2(words_df, size = 1.5, color = palette4, backgroundColor = "white", shape = "circle", minRotation = -pi/4, maxRotation = pi/4, rotateRatio = 0.5)
 
