@@ -3,10 +3,8 @@ library(fmsb)
 library(RColorBrewer)
 library(scales)
 
-# TO DO LEGENDA I CIEMNE TLO
-
 # Color palette
-coul <- c("#470D21", "#D67D3E")
+coul <- c("#470D21", "#D67D3E", "#361500")
 colors_border <- coul
 colors_in <- alpha(coul,0.3)
 
@@ -14,15 +12,15 @@ df <- read.csv("./data/merged_data_cleaned.csv")
 
 characteristics <- c("Aroma", "Flavor", "Aftertaste", "Acidity", "Body", "Balance", "Uniformity", "Clean.Cup", "Sweetness")
 
-# prepare_data <- function (df1, df2) {
-#   df1_vs_df2 <- rbind(df1, df2)
-#   df1_vs_df2 <- rbind(rep(0, length(df1_vs_df2)), df1_vs_df2)
-#   df1_vs_df2 <- rbind(rep(10, length(df1_vs_df2)), df1_vs_df2)
-#!   df1_vs_df2 <- df1_vs_df2 %>% select(-Country.of.Origin)
-#!  df1_vs_df2 <- data.frame(df1_vs_df2)
-#   df1_vs_df2 <- df1_vs_df2[, c(9, 2, 3, 8, 5, 6, 7, 4, 1)]
-#   return(df1_vs_df2)
-# }
+prepare_data <- function (df1, df2) {
+  df1_vs_df2 <- rbind(df1, df2)
+  df1_vs_df2 <- rbind(rep(6, length(df1_vs_df2)), df1_vs_df2)
+  df1_vs_df2 <- rbind(rep(10, length(df1_vs_df2)), df1_vs_df2)
+  df1_vs_df2 <- data.frame(df1_vs_df2)
+  df1_vs_df2 <- df1_vs_df2[, c(9, 2, 3, 8, 5, 6, 7, 4, 1)]
+
+  return(df1_vs_df2)
+}
 
 average_variety <- df %>%
   select(Variety, characteristics) %>%
@@ -40,7 +38,7 @@ average_country <- df %>%
   summarise_at(vars(characteristics), mean, na.rm = TRUE) %>%
   na.omit()
 
-# BELOW 70 AND OVER 90 CUP POINTS
+# COMPARISION BY TOTAL CUP POINTS
 average_coffee_below_70 <- df %>%
   filter(`Total.Cup.Points` < 70) %>%
   select(characteristics) %>%
@@ -48,13 +46,13 @@ average_coffee_below_70 <- df %>%
   colMeans()
 
 average_coffee_over_90 <- df %>%
-  filter(`Total.Cup.Points` > 90) %>%
+  filter(`Total.Cup.Points` >= 90) %>%
   select(characteristics) %>%
   na.omit() %>%
   colMeans()
 
 average_coffee_between_70_and_90 <- df %>%
-  filter(`Total.Cup.Points` >= 70 & `Total.Cup.Points` <= 90) %>%
+  filter(`Total.Cup.Points` >= 70 & `Total.Cup.Points` < 90) %>%
   select(characteristics) %>%
   na.omit() %>%
   colMeans()
@@ -66,12 +64,14 @@ average_coffee_70_vs_90 <- data.frame(average_coffee_70_vs_90)
 average_coffee_70_vs_90 <- average_coffee_70_vs_90[, c(9, 2, 3, 8, 5, 6, 7, 4, 1)]
 
 png(filename ="./plots/spider_charts/average_coffee_quality_vs_rating.png", width = 1000, height = 1000, units = "px")
+par(family = "Noto Sans Regular", font=1)
 radarchart(average_coffee_70_vs_90,
-           plwd=2, plty = 1,
-           centerzero = TRUE, maxmin = TRUE, na.itp = TRUE,
+           plwd=2, plty = 1, pfcol=colors_in, pcol=colors_border,
+           centerzero = TRUE,
            title = "Coffee with <70 vs 70<...<90 vs >90 cup points",
-           seg = 1, cglcol="black", cglty=1, axislabcol="grey",
-           vlcex=1.3)
+           seg = 2, cglcol="black", cglty=2, axislabcol="black",
+           vlcex=1, axistype = 4, caxislabels = c(6,8,10), calcex = 1.3)
+legend(x=1.3, y=1, legend = c("below 70", "between 70 and 90", "above 90"), bty = "n", pch=20 , col=alpha(coul,0.5), text.col = "black", cex=1.2, pt.cex=3)
 dev.off()
 
 # ARABICA VS ROBUSTA
@@ -87,14 +87,8 @@ average_arabica <- df %>%
     na.omit() %>%
     colMeans()
 
-average_arabica_vs_robusta <- rbind(average_robusta, average_arabica)
-average_arabica_vs_robusta <- rbind(rep(6, length(average_arabica_vs_robusta)), average_arabica_vs_robusta)
-average_arabica_vs_robusta <- rbind(rep(10, length(average_arabica_vs_robusta)), average_arabica_vs_robusta)
-average_arabica_vs_robusta <- data.frame(average_arabica_vs_robusta)
-average_arabica_vs_robusta <- average_arabica_vs_robusta[, c(9, 2, 3, 8, 5, 6, 7, 4, 1)]
-
 png(filename ="./plots/spider_charts/arabica_vs_robusta.png", width = 1000, height = 1000, units = "px")
-radarchart(average_arabica_vs_robusta,
+radarchart(prepare_data(average_arabica, average_robusta),
            pcol=colors_border, pfcol=colors_in, plwd=2, plty = 1,
            centerzero = TRUE, maxmin = TRUE, na.itp = TRUE,
            title = "Arabica vs Robusta",
@@ -241,7 +235,7 @@ random_variety_spider <- function () {
 random_variety_spider()
 
 # BELOW 1KM AND OVER 2KM
-average_coffee_below_1000m <- df %>%
+waverage_coffee_below_1000m <- df %>%
   filter(Altitude < 400) %>%
   select(characteristics) %>%
   na.omit() %>%
@@ -253,16 +247,8 @@ average_coffee_over_2000m <- df %>%
     na.omit() %>%
     colMeans()
 
-average_coffee_1000m_vs_2000m <- rbind(average_coffee_below_1000m, average_coffee_over_2000m)
-average_coffee_1000m_vs_2000m <- rbind(rep(6, length(average_coffee_1000m_vs_2000m)), average_coffee_1000m_vs_2000m)
-average_coffee_1000m_vs_2000m <- rbind(rep(10, length(average_coffee_1000m_vs_2000m)), average_coffee_1000m_vs_2000m)
-average_coffee_1000m_vs_2000m <- data.frame(average_coffee_1000m_vs_2000m)
-average_coffee_1000m_vs_2000m <- average_coffee_1000m_vs_2000m[, c(9, 2, 3, 8, 5, 6, 7, 4, 1)]
-
 png(filename ="./plots/spider_charts/average_coffee_1000m_vs_2000m.png", width = 1000, height = 1000, units = "px")
-# DARK BACKGROUND, WORK IN PROGRESS
-# par(bg = "black", mar = rep(0, 4))
-radarchart(average_coffee_1000m_vs_2000m,
+radarchart(prepare_data(waverage_coffee_below_1000m, average_coffee_over_2000m),
            pcol=colors_border, pfcol=colors_in, plwd=2, plty = 1,
            centerzero = TRUE, maxmin = TRUE, na.itp = TRUE,
            title = "Coffee below 1000m vs over 2000m",
